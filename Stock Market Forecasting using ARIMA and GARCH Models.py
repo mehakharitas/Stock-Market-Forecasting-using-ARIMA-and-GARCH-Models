@@ -15,6 +15,8 @@ import pandas_datareader.data as web
 from datetime import datetime, timedelta
 from arch import arch_model
 from statsmodels.stats.diagnostic import acorr_ljungbox
+from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
+
 
 
 # Load your cleaned dataset
@@ -384,3 +386,80 @@ plt.legend()
 plt.tight_layout()
 plt.show()
 
+
+bank_mape = {}
+bank_rmse = {}
+bank_strategy_returns = {}
+bank_passive_returns = {}
+
+print("\n\n🔁 Running post-analysis for MAPE, RMSE, and Strategy Backtest...")
+
+for stock_name in arima_orders.keys():
+    print(f"\n🔎 {stock_name}:")
+
+    stock_df = df[df["Stock"] == stock_name].copy()
+    stock_df.set_index("Date", inplace=True)
+    stock_df = stock_df.asfreq('B')
+    stock_df = stock_df.fillna(method='ffill')
+
+    n = int(len(stock_df) * 0.8)
+    train = stock_df['Close'][:n]
+    test = stock_df['Close'][n:]
+
+    order = arima_orders.get(stock_name, default_order)
+
+    try:
+        model = ARIMA(train, order=order)
+        result = model.fit()
+        step = 90
+
+        forecast_result = result.get_forecast(steps=step)
+        fc = forecast_result.predicted_mean
+
+        if len(test) >= step:
+            actual = test[:step].values
+            forecast = fc.values
+
+            # ✅ MAPE & RMSE
+            mape = mean_absolute_percentage_error(actual, forecast) * 100
+            rmse = np.sqrt(mean_squared_error(actual, forecast))
+
+            bank_mape[stock_name] = mape
+            bank_rmse[stock_name] = rmse
+
+            print(f"MAPE: {mape:.2f}% | RMSE: {rmse:.2f}")
+
+            # ✅ Backtest Trading Strategy
+            actual_returns = pd.Series(np.diff(actual), index=test[:step].index[1:])
+            predicted_returns = pd.Series(np.diff(forecast), index=test[:step].index[1:])
+
+            strategy_returns = actual_returns * (predicted_returns > 0)
+            cumulative_strategy_return = strategy_returns.sum()
+            cumulative_passive_return = actual_returns.sum()
+
+            bank_strategy_returns[stock_name] = cumulative_strategy_return
+            bank_passive_returns[stock_name] = cumulative_passive_return
+
+            print(f"Strategy Return: {cumulative_strategy_return:.2f} | Passive Return: {cumulative_passive_return:.2f}")
+
+        else:
+            print("⚠️ Not enough test data for 90-step forecast.")
+
+    except Exception as e:
+        print(f"❌ Could not fit ARIMA for {stock_name}. Skipping. Error: {e}")
+        continue
+
+# 🔚 Final Summary Block
+print("\n\n📌 Final Summary:")
+print("🔹 MAPE & RMSE:")
+for stock in bank_mape:
+    print(f"{stock}: MAPE = {bank_mape[stock]:.2f}%, RMSE = {bank_rmse[stock]:.2f}")
+print(f"\nAverage MAPE: {np.mean(list(bank_mape.values())):.2f}%")
+print(f"Average RMSE: {np.mean(list(bank_rmse.values())):.2f}")
+
+print("\n🔹 Strategy vs Passive Return:")
+for stock in bank_strategy_returns:
+    s = bank_strategy_returns[stock]
+    p = bank_passive_returns[stock]
+    delta = s - p
+    print(f"{stock}: Strategy = {s:.2f}, Passive = {p:.2f} → Δ = {delta:.2f}")
