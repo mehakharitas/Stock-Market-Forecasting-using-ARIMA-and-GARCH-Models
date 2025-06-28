@@ -1,4 +1,4 @@
-# Stock-Market-Forecasting-using-ARIMA-and-GARCH-Models
+# Stock Market Forecasting using ARIMA and GARCH Models
 Stock Forecasting Using ARIMA and GARCH Models
 This project analyzes and forecasts the closing prices and volatility of major Indian bank stocks using time series modeling techniques. It applies ARIMA models to capture linear trends and structure in stock prices and selectively uses GARCH models to capture volatility clustering, where statistically significant.
 
