@@ -16,4 +16,4 @@ This project analyzes and forecasts the closing prices and volatility of major I
 
 6) Visualization of actual vs forecasted prices for 90-day horizons
 
-7) GARCH models were applied to INDUSINDBK and BAJAJFINSV, where volatility behavior was prominent and model parameters were statistically significant.
+7) GARCH models were applied , where volatility behavior was prominent and model parameters were statistically significant.
